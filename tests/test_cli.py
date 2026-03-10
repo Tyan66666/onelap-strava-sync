@@ -14,3 +14,15 @@ def test_cli_accepts_since_argument_and_prints_summary(capsys):
 
     assert exit_code == 0
     assert "fetched 5 -> deduped 2 -> success 2 -> failed 1" in out
+
+
+def test_run_sync_script_help_exits_zero():
+    import subprocess
+    import sys
+
+    result = subprocess.run(
+        [sys.executable, "run_sync.py", "--help"], capture_output=True, text=True
+    )
+
+    assert result.returncode == 0
+    assert "--since" in result.stdout
