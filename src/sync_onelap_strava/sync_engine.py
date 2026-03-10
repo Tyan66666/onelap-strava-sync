@@ -3,12 +3,17 @@ from datetime import date, timedelta
 from pathlib import Path
 
 
+class OnelapRiskControlError(Exception):
+    pass
+
+
 @dataclass
 class SyncSummary:
     fetched: int
     deduped: int
     success: int
     failed: int
+    aborted_reason: str | None = None
 
 
 class SyncEngine:
@@ -34,7 +39,18 @@ class SyncEngine:
         else:
             since_value = since_date
 
-        items = self.onelap_client.list_fit_activities(since=since_value, limit=limit)
+        try:
+            items = self.onelap_client.list_fit_activities(
+                since=since_value, limit=limit
+            )
+        except OnelapRiskControlError:
+            return SyncSummary(
+                fetched=0,
+                deduped=0,
+                success=0,
+                failed=0,
+                aborted_reason="risk-control",
+            )
         fetched = len(items)
         deduped = 0
         success = 0

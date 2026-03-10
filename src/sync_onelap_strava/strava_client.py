@@ -4,6 +4,14 @@ from pathlib import Path
 import requests
 
 
+class StravaRetriableError(Exception):
+    pass
+
+
+class StravaPermanentError(Exception):
+    pass
+
+
 class StravaClient:
     def __init__(
         self,
@@ -65,6 +73,13 @@ class StravaClient:
             if response.status_code >= 500 and attempts < retries:
                 time.sleep(backoff_seconds)
                 continue
+
+            if response.status_code >= 500:
+                raise StravaRetriableError(f"strava upload 5xx: {response.status_code}")
+            if response.status_code >= 400:
+                raise StravaPermanentError(
+                    f"strava upload failed: {response.status_code}"
+                )
 
             response.raise_for_status()
             payload = response.json()
