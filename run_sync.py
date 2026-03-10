@@ -1,7 +1,9 @@
 import argparse
 from datetime import date
+from pathlib import Path
 
 from sync_onelap_strava.dedupe_service import make_fingerprint
+from sync_onelap_strava.logging_setup import configure_logging
 from sync_onelap_strava.state_store import JsonStateStore
 from sync_onelap_strava.sync_engine import SyncEngine
 
@@ -30,16 +32,18 @@ def build_default_engine():
     )
 
 
-def run_cli(argv=None, engine=None):
+def run_cli(argv=None, engine=None, log_file: Path | str = "logs/sync.log"):
     parser = argparse.ArgumentParser(description="Sync OneLap FIT files to Strava")
     parser.add_argument(
         "--since", type=str, default=None, help="ISO date like 2026-03-01"
     )
     args = parser.parse_args(argv)
 
+    logger = configure_logging(log_file)
     since_value = date.fromisoformat(args.since) if args.since else None
     app = engine or build_default_engine()
     summary = app.run_once(since_date=since_value)
+    logger.info("summary success=%s failed=%s", summary.success, summary.failed)
     print(
         f"fetched {summary.fetched} -> deduped {summary.deduped} -> success {summary.success} -> failed {summary.failed}"
     )
