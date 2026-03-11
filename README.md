@@ -38,6 +38,15 @@ Required `.env` keys for runtime:
 - Run with explicit start date:
   - `python run_sync.py --since 2026-03-01`
 
+### Download-only Mode
+
+- Download FIT files from OneLap without uploading to Strava:
+  - `python run_sync.py --download-only --since 2026-03-01`
+- In this mode, Strava keys are not required.
+- Example output:
+  - `2026-03-09T08:00:00Z  a2.fit`
+  - `download-only fetched X -> downloaded Y -> failed Z`
+
 ## --since Usage
 
 - Use ISO date format: `YYYY-MM-DD`
