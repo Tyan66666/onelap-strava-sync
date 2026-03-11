@@ -1,6 +1,6 @@
 import argparse
 import sys
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parent
@@ -52,6 +52,47 @@ def build_default_engine():
     )
 
 
+def _validate_onelap_settings(settings):
+    required = {
+        "ONELAP_USERNAME": settings.onelap_username,
+        "ONELAP_PASSWORD": settings.onelap_password,
+    }
+    missing = [key for key, value in required.items() if not value]
+    if missing:
+        raise ValueError(f"missing required settings: {', '.join(missing)}")
+
+
+def run_download_only(since_value):
+    settings = load_settings(cli_since=since_value)
+    _validate_onelap_settings(settings)
+
+    onelap = OneLapClient(
+        base_url="https://www.onelap.cn",
+        username=settings.onelap_username or "",
+        password=settings.onelap_password or "",
+    )
+
+    effective_since = since_value
+    if effective_since is None:
+        effective_since = date.today() - timedelta(days=settings.default_lookback_days)
+
+    items = onelap.list_fit_activities(since=effective_since, limit=50)
+    fetched = len(items)
+    downloaded = 0
+    failed = 0
+    for item in items:
+        try:
+            onelap.download_fit(item.activity_id, Path("downloads"))
+            downloaded += 1
+        except Exception:
+            failed += 1
+
+    print(
+        f"download-only fetched {fetched} -> downloaded {downloaded} -> failed {failed}"
+    )
+    return 0
+
+
 def run_cli(argv=None, engine=None, log_file: Path | str = "logs/sync.log"):
     parser = argparse.ArgumentParser(description="Sync OneLap FIT files to Strava")
     parser.add_argument(
@@ -67,6 +108,8 @@ def run_cli(argv=None, engine=None, log_file: Path | str = "logs/sync.log"):
     logger = configure_logging(log_file)
     try:
         since_value = date.fromisoformat(args.since) if args.since else None
+        if args.download_only and engine is None:
+            return run_download_only(since_value)
         app = engine or build_default_engine()
         summary = app.run_once(since_date=since_value)
     except Exception as exc:
