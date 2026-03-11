@@ -106,8 +106,8 @@ def test_download_only_prints_failed_line_for_item_errors(monkeypatch, capsys):
 
 
 def test_download_only_returns_nonzero_when_onelap_settings_missing(monkeypatch):
-    monkeypatch.delenv("ONELAP_USERNAME", raising=False)
-    monkeypatch.delenv("ONELAP_PASSWORD", raising=False)
+    monkeypatch.setenv("ONELAP_USERNAME", "")
+    monkeypatch.setenv("ONELAP_PASSWORD", "")
 
     from run_sync import run_cli
 

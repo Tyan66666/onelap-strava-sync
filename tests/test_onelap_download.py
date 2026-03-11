@@ -7,7 +7,7 @@ from sync_onelap_strava.onelap_client import OneLapClient
 def test_download_fit_writes_file(tmp_path):
     responses.add(
         responses.GET,
-        "https://www.onelap.cn/api/activities",
+        "http://u.onelap.cn/analysis/list",
         json={
             "data": [
                 {

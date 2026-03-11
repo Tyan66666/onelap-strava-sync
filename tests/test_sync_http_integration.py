@@ -34,20 +34,20 @@ def test_run_once_real_adapters_uploads_unsynced_only(tmp_path):
 
     responses.add(
         responses.POST,
-        "https://www.onelap.cn/login",
+        "https://www.onelap.cn/api/login",
         json={"code": 0},
         headers={"Set-Cookie": "sid=abc; Path=/"},
         status=200,
     )
     responses.add(
         responses.GET,
-        "https://www.onelap.cn/api/activities",
+        "http://u.onelap.cn/analysis/list",
         json={"message": "unauthorized"},
         status=401,
     )
     responses.add(
         responses.GET,
-        "https://www.onelap.cn/api/activities",
+        "http://u.onelap.cn/analysis/list",
         json={
             "data": [
                 {"id": "a1", "start_time": a1_start, "fit_url": "/fit/a1.fit"},
@@ -119,6 +119,6 @@ def test_run_once_real_adapters_uploads_unsynced_only(tmp_path):
     assert len(upload_calls) == 1
 
     login_calls = [
-        c for c in responses.calls if c.request.url == "https://www.onelap.cn/login"
+        c for c in responses.calls if c.request.url == "https://www.onelap.cn/api/login"
     ]
     assert len(login_calls) == 1
