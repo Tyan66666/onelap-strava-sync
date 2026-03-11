@@ -42,3 +42,14 @@ def test_build_default_engine_uses_real_clients(monkeypatch):
     engine = build_default_engine()
     assert engine.onelap_client.__class__.__name__ == "OneLapClient"
     assert engine.strava_client.__class__.__name__ == "StravaClient"
+
+
+def test_cli_accepts_download_only_argument_and_runs_engine(capsys):
+    class FakeEngine:
+        def run_once(self, since_date=None, limit=50):
+            return SyncSummary(fetched=0, deduped=0, success=0, failed=0)
+
+    from run_sync import run_cli
+
+    exit_code = run_cli(["--download-only"], engine=FakeEngine())
+    assert exit_code == 0

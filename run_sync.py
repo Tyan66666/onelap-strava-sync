@@ -57,6 +57,11 @@ def run_cli(argv=None, engine=None, log_file: Path | str = "logs/sync.log"):
     parser.add_argument(
         "--since", type=str, default=None, help="ISO date like 2026-03-01"
     )
+    parser.add_argument(
+        "--download-only",
+        action="store_true",
+        help="Download FIT files from OneLap without uploading to Strava",
+    )
     args = parser.parse_args(argv)
 
     logger = configure_logging(log_file)
