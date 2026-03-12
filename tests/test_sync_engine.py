@@ -101,7 +101,7 @@ def test_sync_engine_logs_poll_error_details(tmp_path, caplog):
         def poll_upload(self, upload_id):
             return {
                 "status": "error",
-                "error": "duplicate of activity 999",
+                "error": "file parse failed",
                 "activity_id": None,
             }
 
@@ -122,7 +122,7 @@ def test_sync_engine_logs_poll_error_details(tmp_path, caplog):
 
     assert summary.success == 0
     assert summary.failed == 1
-    assert "duplicate of activity 999" in caplog.text
+    assert "file parse failed" in caplog.text
     assert "a1" in caplog.text
 
 
@@ -229,3 +229,56 @@ def test_sync_engine_handles_two_records_same_activity_id(tmp_path):
     assert summary.deduped == 1
     assert summary.success == 1
     assert summary.failed == 0
+
+
+def test_sync_engine_counts_strava_duplicate_as_deduped_and_marks_state(tmp_path):
+    class FakeItem:
+        activity_id = "677767"
+        start_time = "2026-03-12T08:00:00Z"
+        record_key = "MAGENE_A.fit"
+
+    class FakeOnelap:
+        def list_fit_activities(self, since, limit):
+            return [FakeItem()]
+
+        def download_fit(self, record_key, output_dir):
+            path = Path(output_dir) / record_key
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(b"fit")
+            return path
+
+    class FakeState:
+        def __init__(self):
+            self.marked = []
+
+        def is_synced(self, fingerprint):
+            return False
+
+        def mark_synced(self, fingerprint, strava_activity_id):
+            self.marked.append((fingerprint, strava_activity_id))
+
+    class FakeStrava:
+        def upload_fit(self, path):
+            return 123
+
+        def poll_upload(self, upload_id):
+            return {
+                "status": "There was an error processing your activity.",
+                "error": "677767.fit duplicate of <a href='/activities/17696883248'>x</a>",
+                "activity_id": None,
+            }
+
+    def fake_make_fingerprint(path, start_time, record_key):
+        return "MAGENE_A.fit|hash|2026-03-12T08:00:00Z"
+
+    state = FakeState()
+    engine = SyncEngine(
+        FakeOnelap(), FakeStrava(), state, fake_make_fingerprint, tmp_path
+    )
+    summary = engine.run_once(since_date="2026-03-12", limit=50)
+
+    assert summary.success == 0
+    assert summary.deduped == 1
+    assert summary.failed == 0
+    assert len(state.marked) == 1
+    assert state.marked[0][1] == 17696883248

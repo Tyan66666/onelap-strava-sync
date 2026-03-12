@@ -1,4 +1,5 @@
 import logging
+import re
 from dataclasses import dataclass
 from datetime import date, timedelta
 from pathlib import Path
@@ -76,6 +77,18 @@ class SyncEngine:
                 result = self.strava_client.poll_upload(upload_id)
                 activity_id = result.get("activity_id")
                 if activity_id is None or result.get("error") is not None:
+                    if self._is_duplicate_error(result.get("error")):
+                        duplicate_activity_id = self._extract_duplicate_activity_id(
+                            result.get("error")
+                        )
+                        self.state_store.mark_synced(
+                            fingerprint,
+                            duplicate_activity_id
+                            if duplicate_activity_id is not None
+                            else -1,
+                        )
+                        deduped += 1
+                        continue
                     LOGGER.error(
                         "strava upload failed activity_id=%s upload_id=%s status=%s error=%s",
                         item.activity_id,
@@ -98,3 +111,15 @@ class SyncEngine:
         return SyncSummary(
             fetched=fetched, deduped=deduped, success=success, failed=failed
         )
+
+    def _is_duplicate_error(self, error: object) -> bool:
+        return "duplicate of" in str(error or "").lower()
+
+    def _extract_duplicate_activity_id(self, error: object) -> int | None:
+        text = str(error or "")
+        match = re.search(r"/activities/(\d+)", text)
+        if not match:
+            match = re.search(r"activity\s+(\d+)", text, flags=re.IGNORECASE)
+        if not match:
+            return None
+        return int(match.group(1))
