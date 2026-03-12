@@ -56,6 +56,12 @@ Required `.env` keys for runtime:
 - Use ISO date format: `YYYY-MM-DD`
 - Example: `python run_sync.py --since 2026-03-01`
 
+## Skills Distribution
+
+- Runtime code remains in root source directories.
+- Distribution-friendly skill artifacts are under `skills/onelap-strava-sync/`.
+- Mapping between skill artifacts and runtime entrypoints: `docs/skills-mapping.md`.
+
 ## Troubleshooting
 
 - If import errors happen, confirm dependencies are installed in the active virtual environment.

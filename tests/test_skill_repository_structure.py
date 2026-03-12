@@ -34,3 +34,8 @@ def test_skills_mapping_doc_links_to_root_entrypoints():
     mapping = (ROOT / "docs" / "skills-mapping.md").read_text(encoding="utf-8")
     assert "run_sync.py" in mapping
     assert "src/sync_onelap_strava" in mapping
+
+
+def test_root_readme_references_skills_mapping_doc():
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    assert "docs/skills-mapping.md" in readme
