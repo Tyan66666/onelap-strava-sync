@@ -6,20 +6,21 @@ from sync_onelap_strava.sync_engine import SyncEngine
 
 def test_sync_engine_uploads_only_unsynced_items(tmp_path):
     class FakeItem:
-        def __init__(self, activity_id, start_time):
+        def __init__(self, activity_id, start_time, record_key):
             self.activity_id = activity_id
             self.start_time = start_time
+            self.record_key = record_key
 
     class FakeOnelap:
         def list_fit_activities(self, since, limit):
             return [
-                FakeItem("a1", "2026-03-10T08:00:00Z"),
-                FakeItem("a2", "2026-03-10T09:00:00Z"),
-                FakeItem("a3", "2026-03-10T10:00:00Z"),
+                FakeItem("a1", "2026-03-10T08:00:00Z", "rk-a1"),
+                FakeItem("a2", "2026-03-10T09:00:00Z", "rk-a2"),
+                FakeItem("a3", "2026-03-10T10:00:00Z", "rk-a3"),
             ]
 
-        def download_fit(self, activity_id, output_dir):
-            path = Path(output_dir) / f"{activity_id}.fit"
+        def download_fit(self, record_key, output_dir):
+            path = Path(output_dir) / f"{record_key}.fit"
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(b"fit")
             return path
@@ -27,8 +28,8 @@ def test_sync_engine_uploads_only_unsynced_items(tmp_path):
     class FakeState:
         def __init__(self):
             self.synced = {
-                "hash-a1|2026-03-10T08:00:00Z",
-                "hash-a2|2026-03-10T09:00:00Z",
+                "rk-a1|hash-rk-a1|2026-03-10T08:00:00Z",
+                "rk-a2|hash-rk-a2|2026-03-10T09:00:00Z",
             }
 
         def is_synced(self, fingerprint):
@@ -48,9 +49,9 @@ def test_sync_engine_uploads_only_unsynced_items(tmp_path):
         def poll_upload(self, upload_id):
             return {"status": "ready", "error": None, "activity_id": 99}
 
-    def fake_make_fingerprint(path, start_time):
+    def fake_make_fingerprint(path, start_time, record_key):
         name = Path(path).stem
-        return f"hash-{name}|{start_time}"
+        return f"{record_key}|hash-{name}|{start_time}"
 
     engine = SyncEngine(
         onelap_client=FakeOnelap(),
@@ -71,16 +72,17 @@ def test_sync_engine_uploads_only_unsynced_items(tmp_path):
 
 def test_sync_engine_logs_poll_error_details(tmp_path, caplog):
     class FakeItem:
-        def __init__(self, activity_id, start_time):
+        def __init__(self, activity_id, start_time, record_key):
             self.activity_id = activity_id
             self.start_time = start_time
+            self.record_key = record_key
 
     class FakeOnelap:
         def list_fit_activities(self, since, limit):
-            return [FakeItem("a1", "2026-03-10T08:00:00Z")]
+            return [FakeItem("a1", "2026-03-10T08:00:00Z", "rk-a1")]
 
-        def download_fit(self, activity_id, output_dir):
-            path = Path(output_dir) / f"{activity_id}.fit"
+        def download_fit(self, record_key, output_dir):
+            path = Path(output_dir) / f"{record_key}.fit"
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(b"fit")
             return path
@@ -103,8 +105,8 @@ def test_sync_engine_logs_poll_error_details(tmp_path, caplog):
                 "activity_id": None,
             }
 
-    def fake_make_fingerprint(path, start_time):
-        return f"fp|{start_time}"
+    def fake_make_fingerprint(path, start_time, record_key):
+        return f"{record_key}|fp|{start_time}"
 
     caplog.set_level(logging.ERROR, logger="sync_onelap_strava")
 
@@ -126,16 +128,17 @@ def test_sync_engine_logs_poll_error_details(tmp_path, caplog):
 
 def test_sync_engine_logs_exception_message_when_upload_raises(tmp_path, caplog):
     class FakeItem:
-        def __init__(self, activity_id, start_time):
+        def __init__(self, activity_id, start_time, record_key):
             self.activity_id = activity_id
             self.start_time = start_time
+            self.record_key = record_key
 
     class FakeOnelap:
         def list_fit_activities(self, since, limit):
-            return [FakeItem("a1", "2026-03-10T08:00:00Z")]
+            return [FakeItem("a1", "2026-03-10T08:00:00Z", "rk-a1")]
 
-        def download_fit(self, activity_id, output_dir):
-            path = Path(output_dir) / f"{activity_id}.fit"
+        def download_fit(self, record_key, output_dir):
+            path = Path(output_dir) / f"{record_key}.fit"
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(b"fit")
             return path
@@ -154,8 +157,8 @@ def test_sync_engine_logs_exception_message_when_upload_raises(tmp_path, caplog)
         def poll_upload(self, upload_id):
             raise AssertionError("poll should not be called")
 
-    def fake_make_fingerprint(path, start_time):
-        return f"fp|{start_time}"
+    def fake_make_fingerprint(path, start_time, record_key):
+        return f"{record_key}|fp|{start_time}"
 
     caplog.set_level(logging.ERROR, logger="sync_onelap_strava")
 
@@ -173,3 +176,56 @@ def test_sync_engine_logs_exception_message_when_upload_raises(tmp_path, caplog)
     assert summary.failed == 1
     assert "activity:write" in caplog.text
     assert "a1" in caplog.text
+
+
+def test_sync_engine_handles_two_records_same_activity_id(tmp_path):
+    class FakeItem:
+        def __init__(self, activity_id, start_time, record_key):
+            self.activity_id = activity_id
+            self.start_time = start_time
+            self.record_key = record_key
+
+    class FakeOnelap:
+        def list_fit_activities(self, since, limit):
+            return [
+                FakeItem("677767", "2026-03-12T08:00:00Z", "MAGENE_A.fit"),
+                FakeItem("677767", "2026-03-12T09:00:00Z", "MAGENE_B.fit"),
+            ]
+
+        def download_fit(self, record_key, output_dir):
+            path = Path(output_dir) / record_key
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(record_key.encode("utf-8"))
+            return path
+
+    class FakeState:
+        def __init__(self):
+            self.synced = {"MAGENE_A.fit|dummyhash|2026-03-12T08:00:00Z"}
+
+        def is_synced(self, fingerprint):
+            return fingerprint in self.synced
+
+        def mark_synced(self, fingerprint, strava_activity_id):
+            self.synced.add(fingerprint)
+
+    class FakeStrava:
+        def upload_fit(self, path):
+            return 1
+
+        def poll_upload(self, upload_id):
+            return {"status": "ready", "error": None, "activity_id": 99}
+
+    def fake_make_fingerprint(path, start_time, record_key):
+        if record_key == "MAGENE_A.fit":
+            return "MAGENE_A.fit|dummyhash|2026-03-12T08:00:00Z"
+        return "MAGENE_B.fit|dummyhash|2026-03-12T09:00:00Z"
+
+    engine = SyncEngine(
+        FakeOnelap(), FakeStrava(), FakeState(), fake_make_fingerprint, tmp_path
+    )
+    summary = engine.run_once(since_date="2026-03-12", limit=50)
+
+    assert summary.fetched == 2
+    assert summary.deduped == 1
+    assert summary.success == 1
+    assert summary.failed == 0

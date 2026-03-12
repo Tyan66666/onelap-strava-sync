@@ -62,9 +62,11 @@ class SyncEngine:
 
         for item in items:
             fit_path = self.onelap_client.download_fit(
-                item.activity_id, self.download_dir
+                item.record_key, self.download_dir
             )
-            fingerprint = self.make_fingerprint(fit_path, item.start_time)
+            fingerprint = self.make_fingerprint(
+                fit_path, item.start_time, item.record_key
+            )
             if self.state_store.is_synced(fingerprint):
                 deduped += 1
                 continue
