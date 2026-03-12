@@ -15,7 +15,9 @@ from sync_onelap_strava.sync_engine import SyncEngine
 def test_run_once_real_adapters_uploads_unsynced_only(tmp_path):
     a1_start = "2026-03-08T08:00:00Z"
     a2_start = "2026-03-09T08:00:00Z"
-    a1_fp = f"{hashlib.sha256(b'fit-a1').hexdigest()}|{a1_start}"
+    a1_record_key = "fitUrl:/fit/a1.fit"
+    a2_record_key = "fitUrl:/fit/a2.fit"
+    a1_fp = f"{a1_record_key}|{hashlib.sha256(b'fit-a1').hexdigest()}|{a1_start}"
 
     state_path = tmp_path / "state.json"
     state_path.write_text(
@@ -108,7 +110,7 @@ def test_run_once_real_adapters_uploads_unsynced_only(tmp_path):
 
     state = json.loads(state_path.read_text(encoding="utf-8"))
     assert len(state["synced"]) == 2
-    a2_fp = f"{hashlib.sha256(b'fit-a2').hexdigest()}|{a2_start}"
+    a2_fp = f"{a2_record_key}|{hashlib.sha256(b'fit-a2').hexdigest()}|{a2_start}"
     assert a2_fp in state["synced"]
 
     upload_calls = [
