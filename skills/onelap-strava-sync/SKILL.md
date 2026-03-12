@@ -16,6 +16,8 @@ Use this skill to run OneLap to Strava sync workflows through the existing root 
 
 See `resources/commands.md` for exact commands.
 
+Prefer the global command `onelap-sync` (installed from package `onelap-strava-sync`).
+
 ## Notes
 
 - Source of truth stays in root code (`run_sync.py`, `src/sync_onelap_strava`).

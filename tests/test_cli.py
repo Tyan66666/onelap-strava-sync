@@ -73,3 +73,18 @@ def test_cli_runs_strava_auth_init_and_exits_zero(monkeypatch):
     code = run_sync.run_cli(["--strava-auth-init"])
     assert code == 0
     assert called["ok"]
+
+
+def test_package_cli_module_accepts_since_argument_and_prints_summary(capsys):
+    class FakeEngine:
+        def run_once(self, since_date=None, limit=50):
+            assert str(since_date) == "2026-03-01"
+            return SyncSummary(fetched=3, deduped=1, success=1, failed=1)
+
+    from sync_onelap_strava.cli import run_cli
+
+    exit_code = run_cli(["--since", "2026-03-01"], engine=FakeEngine())
+    out = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert "fetched 3 -> deduped 1 -> success 1 -> failed 1" in out

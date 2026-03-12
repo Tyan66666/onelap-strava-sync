@@ -37,15 +37,17 @@ Required `.env` keys for runtime:
 - OneLap HTTP prerequisites:
   - OneLap account can sign in at `https://www.onelap.cn`
   - Strava OAuth tokens are valid in `.env`
+- Recommended global command install:
+  - `pipx install onelap-strava-sync`
 - Default lookback run:
-  - `python run_sync.py`
+  - `onelap-sync`
 - Run with explicit start date:
-  - `python run_sync.py --since 2026-03-01`
+  - `onelap-sync --since 2026-03-01`
 
 ### Download-only Mode
 
 - Download FIT files from OneLap without uploading to Strava:
-  - `python run_sync.py --download-only --since 2026-03-01`
+  - `onelap-sync --download-only --since 2026-03-01`
 - In this mode, Strava keys are not required.
 - Example output:
   - `2026-03-09T08:00:00Z  a2.fit`
@@ -54,13 +56,16 @@ Required `.env` keys for runtime:
 ## --since Usage
 
 - Use ISO date format: `YYYY-MM-DD`
-- Example: `python run_sync.py --since 2026-03-01`
+- Example: `onelap-sync --since 2026-03-01`
+
+Repo-local fallback command: `python run_sync.py`
 
 ## Skills Distribution
 
 - Runtime code remains in root source directories.
 - Distribution-friendly skill artifacts are under `skills/onelap-strava-sync/`.
 - Mapping between skill artifacts and runtime entrypoints: `docs/skills-mapping.md`.
+- Developer maintenance guide: `CONTRIBUTING.md`.
 
 ## Troubleshooting
 

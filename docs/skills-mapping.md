@@ -7,7 +7,8 @@
 
 ## Entrypoint
 
-- `run_sync.py`
+- `src/sync_onelap_strava/cli.py`
+- `run_sync.py` (compatibility wrapper)
 
 ## Runtime Modules
 
@@ -21,3 +22,8 @@
 
 - Business logic changes must be made in root source files.
 - The `skills/` directory is a distribution and discovery layer.
+
+## Global CLI
+
+- Console script: `onelap-sync`
+- Defined in `pyproject.toml` under `[project.scripts]`.

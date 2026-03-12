@@ -24,7 +24,7 @@ def test_skill_commands_cover_primary_cli_modes():
     text = (
         ROOT / "skills" / "onelap-strava-sync" / "resources" / "commands.md"
     ).read_text(encoding="utf-8")
-    assert "python run_sync.py" in text
+    assert "onelap-sync" in text
     assert "--since" in text
     assert "--download-only" in text
     assert "--strava-auth-init" in text
@@ -32,10 +32,16 @@ def test_skill_commands_cover_primary_cli_modes():
 
 def test_skills_mapping_doc_links_to_root_entrypoints():
     mapping = (ROOT / "docs" / "skills-mapping.md").read_text(encoding="utf-8")
-    assert "run_sync.py" in mapping
+    assert "sync_onelap_strava/cli.py" in mapping
     assert "src/sync_onelap_strava" in mapping
 
 
 def test_root_readme_references_skills_mapping_doc():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     assert "docs/skills-mapping.md" in readme
+
+
+def test_pyproject_exposes_onelap_sync_console_script():
+    pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    assert "[project.scripts]" in pyproject
+    assert 'onelap-sync = "sync_onelap_strava.cli:main"' in pyproject
