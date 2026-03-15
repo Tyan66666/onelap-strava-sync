@@ -5,7 +5,7 @@
 - Primary CLI implementation: `src/sync_onelap_strava/cli.py`
 - Compatibility wrapper only: `run_sync.py`
 - Runtime logic stays in `src/sync_onelap_strava/*`
-- `skills/` is distribution/discovery metadata, not business logic
+- Skill distribution is maintained in standalone repo `C:/Users/13247/Documents/Code Project/sync_onelap_strava_agent_skills`
 
 ## Local Development
 
@@ -30,14 +30,14 @@ Update all of the following together to avoid drift:
 
 - `src/sync_onelap_strava/cli.py`
 - `run_sync.py` (wrapper compatibility)
-- `skills/onelap-strava-sync/resources/commands.md`
-- `skills/onelap-strava-sync/SKILL.md` (if trigger/usage changed)
+- `C:/Users/13247/Documents/Code Project/sync_onelap_strava_agent_skills/onelap-strava-sync/references/commands.md`
+- `C:/Users/13247/Documents/Code Project/sync_onelap_strava_agent_skills/onelap-strava-sync/SKILL.md` (if trigger/usage changed)
 - `README.md`
 - `docs/skills-mapping.md`
 - Tests under `tests/` (especially `tests/test_cli.py` and `tests/test_skill_repository_structure.py`)
 
 ## Skills Layout Rules
 
-- Skill directory name uses English slug (`onelap-strava-sync`)
+- Skill directory name in standalone repo uses English slug (`onelap-strava-sync`)
 - Human-facing descriptions can be Chinese
-- Do not duplicate Python source files into `skills/`
+- Runtime repo should not carry a local `skills/` directory anymore

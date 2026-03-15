@@ -71,8 +71,8 @@ Repo-local fallback command: `python run_sync.py`
 ## Skills Distribution
 
 - Runtime code remains in root source directories.
-- Distribution-friendly skill artifacts are under `skills/onelap-strava-sync/`.
-- Mapping between skill artifacts and runtime entrypoints: `docs/skills-mapping.md`.
+- Skill distribution moved to standalone repo: `C:/Users/13247/Documents/Code Project/sync_onelap_strava_agent_skills`.
+- Mapping note and migration context: `docs/skills-mapping.md`.
 - Developer maintenance guide: `CONTRIBUTING.md`.
 
 ## Troubleshooting

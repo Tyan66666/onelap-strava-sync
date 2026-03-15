@@ -1,9 +1,16 @@
 # Skills to Root Code Mapping
 
+This repository no longer stores local `skills/` artifacts.
+
+Standalone skill distribution repository:
+
+- `C:/Users/13247/Documents/Code Project/sync_onelap_strava_agent_skills`
+- Skill root: `onelap-strava-sync/`
+
 ## Skill Artifact
 
-- `skills/onelap-strava-sync/SKILL.md`
-- `skills/onelap-strava-sync/resources/commands.md`
+- `onelap-strava-sync/SKILL.md` (in standalone skills repo)
+- `onelap-strava-sync/references/commands.md` (in standalone skills repo)
 
 ## Entrypoint
 
@@ -22,7 +29,7 @@
 ## Maintenance Rule
 
 - Business logic changes must be made in root source files.
-- The `skills/` directory is a distribution and discovery layer.
+- The standalone skills repo is the distribution and discovery layer.
 
 ## Global CLI
 

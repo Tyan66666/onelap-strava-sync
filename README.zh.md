@@ -69,8 +69,8 @@
 ## 技能分发
 
 - 运行时代码保留在根源目录中
-- 分发友好的技能工件位于 `skills/onelap-strava-sync/`
-- 技能工件和运行时入口点之间的映射：`docs/skills-mapping.md`
+- 技能分发已迁移到独立仓库：`C:/Users/13247/Documents/Code Project/sync_onelap_strava_agent_skills`
+- 映射说明与迁移上下文见：`docs/skills-mapping.md`
 - 开发者维护指南：`CONTRIBUTING.md`
 
 ## 故障排除
