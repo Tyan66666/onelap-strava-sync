@@ -31,6 +31,7 @@ The existing Python CLI remains untouched and continues to work independently.
 | Secure storage | expo-secure-store ~14 | Encrypted credential storage |
 | General storage | @react-native-async-storage/async-storage ~2 | Sync state + history + preferences |
 | HTTP | fetch (built-in) | No extra dependency |
+| Cookie management | @react-native-cookies/cookies ^6 | Cross-subdomain cookie handling for OneLap |
 | File system | expo-file-system ~18 | FIT file download to cache |
 | Crypto | expo-crypto ~14 | MD5 (OneLap password) + SHA-256 (dedup) |
 | OAuth | expo-auth-session ~6 | Strava OAuth with deep link callback |
@@ -172,10 +173,15 @@ class OneLapClient {
 Key implementation details:
 - Login sends MD5-hashed password to `{baseUrl}/api/login`
 - MD5 computed via `expo-crypto.digestStringAsync(CryptoDigestAlgorithm.MD5, password)`
-- Cookie management: extract `Set-Cookie` from login response, attach `Cookie` header to subsequent requests
-- Activity list fetched from `http://u.onelap.cn/analysis/list`
+- **Cookie management**: The Python `requests.Session` auto-manages cookies. On React Native, cookies are trickier:
+  - Login is to `www.onelap.cn` but activity list is fetched from `u.onelap.cn` (different subdomain)
+  - Native `fetch` with `credentials: 'include'` uses the OS cookie jar, which follows RFC 6265 — cookies set for `www.onelap.cn` will NOT be sent to `u.onelap.cn` unless the cookie domain is `.onelap.cn`
+  - **Solution**: Use `@react-native-cookies/cookies` to read cookies after login and manually set them for the `u.onelap.cn` domain. If the login response sets cookies with domain `www.onelap.cn`, copy them to `.onelap.cn` scope using `CookieManager.set()`
+  - On web platform: browser's native cookie jar handles this automatically
+- Activity list fetched from `http://u.onelap.cn/analysis/list` (plain HTTP — see §13.3 for platform config)
 - On 401/login-redirect: auto-retry with login (max 1 retry)
-- FIT files downloaded to `FileSystem.cacheDirectory`
+- FIT files downloaded to `FileSystem.cacheDirectory` (volatile — OS may reclaim, acceptable for transient sync use)
+- **Download-level dedup**: Unlike the Python client which avoids overwriting identical files via SHA-256 comparison, the TS client skips this since files go to a volatile cache and are used only during the current sync operation. Fingerprint-level dedup in the StateStore is the primary dedup mechanism.
 
 ### 6.3 Strava Client
 
@@ -191,7 +197,10 @@ class StravaClient {
 Key implementation details:
 - Token refresh: POST `https://www.strava.com/oauth/token` with `grant_type=refresh_token`
 - After refresh: update SecureStore with new access_token, refresh_token, expires_at
-- Upload: POST `https://www.strava.com/api/v3/uploads` with `data_type=fit`, file from local URI
+- **Multipart upload**: Platform-specific approach:
+  - **Native (iOS/Android)**: Use `FileSystem.uploadAsync(url, fileUri, { uploadType: FileSystemUploadType.MULTIPART, fieldName: 'file', parameters: { data_type: 'fit', ... } })` for reliable multipart upload from local file URI
+  - **Web**: Use `FormData` with `Blob` constructed from file content read via `FileSystem.readAsStringAsync(uri, { encoding: 'base64' })`
+- Upload endpoint: POST `https://www.strava.com/api/v3/uploads` with `data_type=fit`
 - 5xx retry: up to 3 times with 1s backoff
 - 4xx: throw `StravaPermanentError`
 - Poll: GET upload status up to 10 times with 2s interval
@@ -204,11 +213,14 @@ class SyncEngine {
     onelapClient: OneLapClient,
     stravaClient: StravaClient,
     stateStore: StateStore,
+    makeFingerprint: (fileUri: string, startTime: string, recordKey: string) => Promise<string>,
     onEvent?: (event: SyncEvent) => void
   )
   async runOnce(sinceDate?: Date, limit?: number): Promise<SyncSummary>
 }
 ```
+
+Note: `makeFingerprint` is injected as a dependency (matching the Python pattern) to allow mocking in tests. Downloaded FIT files are stored in the app's cache directory (`FileSystem.cacheDirectory`), managed internally by the engine.
 
 **SyncEvent type** for real-time UI updates:
 
@@ -265,21 +277,28 @@ async function makeFingerprint(fileUri: string, startTime: string, recordKey: st
 // Returns: "{recordKey}|{sha256_of_file}|{startTime}"
 ```
 
-SHA-256 computed by reading file content via `expo-file-system` and hashing via `expo-crypto`.
+**SHA-256 implementation**: The Python code hashes raw file bytes (`hashlib.sha256(path.read_bytes())`). On React Native:
+- Read file as base64: `FileSystem.readAsStringAsync(fileUri, { encoding: 'base64' })`
+- Decode base64 to `Uint8Array` for hashing
+- Use `expo-crypto.digest(CryptoDigestAlgorithm.SHA256, data)` (Expo SDK 52+ supports `Uint8Array` input)
+- Convert result to hex string to match Python's `hexdigest()` output
+- **Critical**: Must hash the raw bytes, NOT the base64 string, to produce fingerprints compatible with the Python CLI's state store
 
 ## 7. Strava OAuth on Mobile
 
-Mobile OAuth flow differs from the desktop CLI flow:
+Mobile OAuth flow differs from the desktop CLI flow. Uses the current `expo-auth-session` API (`useAuthRequest` hook + `promptAsync`, NOT the deprecated `startAsync`):
 
-1. App calls `AuthSession.makeRedirectUri()` to get the deep link redirect URI (e.g., `onelap-sync://oauth/callback`)
-2. App opens Strava authorize URL in system browser via `AuthSession.startAsync()`:
+1. App defines Strava discovery document and calls `useAuthRequest` hook with client_id, scopes, redirect URI
+2. App calls `AuthSession.makeRedirectUri()` to get the deep link redirect URI (e.g., `onelap-sync://oauth/callback`)
+3. User taps "Authorize" -> `promptAsync()` opens Strava authorize URL in system browser:
    ```
    https://www.strava.com/oauth/authorize?client_id=...&redirect_uri=onelap-sync://oauth/callback&response_type=code&scope=read,activity:write
    ```
-3. User authorizes in Strava web page
-4. Strava redirects to deep link -> App receives authorization code
-5. App exchanges code for tokens: POST `https://www.strava.com/oauth/token`
-6. Tokens saved to SecureStore
+4. User authorizes in Strava web page
+5. Strava redirects to deep link -> App receives authorization code via `response.params.code`
+6. **Scope validation**: App verifies the returned scope (from exchange response) includes `activity:write`. If not, show error: "Strava authorization missing required permission (activity:write). Please re-authorize."
+7. App exchanges code for tokens: POST `https://www.strava.com/oauth/token`
+8. Tokens saved to SecureStore
 
 Configuration in `app.json`:
 ```json
@@ -303,6 +322,10 @@ Configuration in `app.json`:
 | Log entries | In-memory + AsyncStorage | No |
 | Language preference | AsyncStorage | No |
 | Default lookback days | AsyncStorage | No |
+
+**Web platform note**: `expo-secure-store` is not available on web. On web, credentials fall back to `AsyncStorage` (backed by `localStorage`), which is NOT encrypted. The app should display a warning on web: "Credentials are stored without encryption on web. For sensitive use, prefer the mobile app."
+
+**AsyncStorage size note**: Android's default AsyncStorage limit is 6MB. Each synced entry is ~150 bytes, supporting ~40K activities before hitting the limit. This is sufficient for expected usage. If needed, implement state pruning for entries older than 1 year.
 
 ## 9. Error Handling
 
@@ -354,7 +377,50 @@ For Android: APK can be sideloaded directly. For iOS: requires TestFlight or App
 ## 13. Constraints & Risks
 
 1. **Strava client_secret in app**: Embedding `client_secret` in a mobile app is a security risk. Strava's API does not currently support PKCE for mobile apps. Mitigation: store in SecureStore (encrypted), accept the risk for a personal-use tool.
-2. **OneLap cookie handling**: React Native `fetch` does not auto-manage cookies like browsers. Must manually extract and attach cookies.
-3. **OneLap API stability**: OneLap uses `http://` (not HTTPS) for some endpoints. React Native may block HTTP by default. Must configure App Transport Security (iOS) and `android:usesCleartextTraffic` (Android).
+2. **OneLap cookie handling**: React Native `fetch` does not auto-manage cookies across subdomains. See §6.2 for the `@react-native-cookies/cookies` solution.
+3. **OneLap HTTP endpoints**: OneLap uses `http://` (not HTTPS) for `u.onelap.cn`. Platform-specific configuration required:
+   - **iOS**: Add domain-specific ATS exception in `app.json` (NOT global `NSAllowsArbitraryLoads`):
+     ```json
+     {
+       "expo": {
+         "ios": {
+           "infoPlist": {
+             "NSAppTransportSecurity": {
+               "NSExceptionDomains": {
+                 "onelap.cn": {
+                   "NSIncludesSubdomains": true,
+                   "NSExceptionAllowsInsecureHTTPLoads": true
+                 }
+               }
+             }
+           }
+         }
+       }
+     }
+     ```
+   - **Android**: Add `android:usesCleartextTraffic` for `onelap.cn` only via `network_security_config.xml`:
+     ```xml
+     <network-security-config>
+       <domain-config cleartextTrafficPermitted="true">
+         <domain includeSubdomains="true">onelap.cn</domain>
+       </domain-config>
+     </network-security-config>
+     ```
 4. **FIT file size**: Large FIT files may need streaming download. `expo-file-system.downloadAsync` handles this.
 5. **Rate limiting**: Both OneLap and Strava may rate-limit. Existing retry/backoff logic handles Strava; OneLap risk control detection handles OneLap.
+
+## 14. OneLap Risk Control Detection
+
+The Python `SyncEngine` catches `OnelapRiskControlError`. This error is raised when the OneLap API returns a response indicating the account has been flagged for abnormal access patterns. Detection criteria in the TS client:
+- HTTP response contains specific error code or message pattern indicating risk control (e.g., response body containing "风控" or a specific error code)
+- The exact detection logic should be determined during implementation by examining actual OneLap API error responses
+- When detected: immediately abort sync, show user alert with the `aborted_reason="risk-control"` message
+
+## 15. Out of Scope (Future Considerations)
+
+These features are intentionally excluded from v1 but may be added later:
+- **Background sync**: Periodic automatic sync (e.g., after each workout)
+- **Push notifications**: Notify user when sync completes or fails
+- **Auto-sync on activity detection**: Trigger sync when OneLap records a new activity
+- **Strava activity editing**: Modify activity name/type after upload
+- **Multi-account support**: Sync multiple OneLap/Strava account pairs
