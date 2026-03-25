@@ -33,6 +33,7 @@ Required `.env` keys for runtime:
 ## OAuth First Run
 
 1. Create Strava API app and get `client_id` + `client_secret`.
+   - In the Strava API app settings, set **Authorization Callback Domain** to `localhost`.
 2. Complete an OAuth authorization flow to obtain `refresh_token`.
 3. Save credentials in `.env`.
 

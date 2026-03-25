@@ -31,6 +31,7 @@
 ## Strava OAuth 首次运行
 
 1. 创建 Strava API 应用并获取 `client_id` + `client_secret`
+   - 在 Strava API 应用设置中，将 **Authorization Callback Domain** 设置为 `localhost`
 2. 完成 OAuth 授权流程以获取 `refresh_token`
 3. 在 `.env` 中保存凭证
 
