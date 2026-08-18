@@ -1,5 +1,9 @@
 # OneLap 到 Strava 同步
 
+> **⚠️ 已废弃 — 本项目已归档，不再维护。**
+>
+> 请改用 **[wansync-cli](https://github.com/Tyan66666/wansync-cli)**：一个轻量级跨平台 CLI（Linux / macOS / Windows），直接从 App 导出的配置 JSON 同步 OneLap 活动到 Strava、行者、Intervals.icu 和 Outbase——无需 OAuth 配置、无需 Python 环境，只需一个编译好的二进制文件。
+
 本地一键 Python 工具，用于从 OneLap 导出 FIT 文件并逐步上传到 Strava。
 
 项目采用直接 OneLap HTTP + Strava HTTP 适配器运行。

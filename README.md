@@ -1,5 +1,9 @@
 # OneLap to Strava Sync
 
+> **⚠️ DEPRECATED — This project is archived and no longer maintained.**
+>
+> Please use **[wansync-cli](https://github.com/Tyan66666/wansync-cli)** instead: a lightweight cross-platform CLI (Linux / macOS / Windows) that syncs OneLap activities to Strava, Xingzhe (行者), Intervals.icu, and Outbase directly from your exported app config — no OAuth setup, no Python environment, just a single compiled binary.
+
 [简体中文](README.zh.md)
 
 Local one-command Python tool to export FIT files from OneLap and incrementally upload to Strava.
